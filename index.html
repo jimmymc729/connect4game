@@ -643,6 +643,26 @@
     justify-content: center;
     gap: 12px;
   }
+
+  /* Keep setup menus fully visible on mobile (not clipped by board area). */
+  @media (max-width: 899px) {
+    #mode-select,
+    #cpu-side-select {
+      position: fixed;
+      inset: 0;
+      height: 100dvh;
+      z-index: 40;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding:
+        calc(14px + var(--safe-top))
+        calc(12px + var(--safe-right))
+        calc(28px + var(--safe-bottom))
+        calc(12px + var(--safe-left));
+    }
+  }
   #cpu-side-select h2 {
     font-size: clamp(26px, 8vw, 46px);
     font-weight: 900;
@@ -1896,13 +1916,20 @@ function buildBoard() {
 
 function wireBoardInput() {
   // Click / tap / move on the board — map pointer X to column
-  const handlePointer = (e, isClick) => {
+  const handlePointer = (e, isClick, forceCellOnly = false) => {
     if (busy || gameOver) return;
     if (isCpuTurn()) return;
     const rect = boardEl.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const touch = e.touches && e.touches[0] ? e.touches[0] : null;
+    const x = (touch ? touch.clientX : e.clientX) - rect.left;
     if (x < 0 || x > rect.width) return hidePreview();
-    const col = Math.floor((x / rect.width) * COLS);
+    let col = Math.floor((x / rect.width) * COLS);
+    const eventTarget = touch?.target || e.target;
+    const targetCell = eventTarget?.closest ? eventTarget.closest('.cell') : null;
+    if (forceCellOnly) {
+      if (!targetCell) return hidePreview();
+      col = Number(targetCell.dataset.c);
+    }
     if (col < 0 || col >= COLS) return hidePreview();
     if (board[0][col] !== EMPTY) { hidePreview(); return; }
     showPreview(col);
@@ -1913,8 +1940,8 @@ function wireBoardInput() {
   };
   boardEl.addEventListener('mousemove', (e) => handlePointer(e, false));
   boardEl.addEventListener('mouseleave', () => hidePreview());
-  boardEl.addEventListener('click', (e) => handlePointer(e, true));
-  boardEl.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointer(e, true); }, { passive: false });
+  boardEl.addEventListener('click', (e) => handlePointer(e, true, true));
+  boardEl.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointer(e, true, true); }, { passive: false });
 }
 
 let lastPreviewCol = -1;
