@@ -9,7 +9,7 @@
 <meta property="og:description" content="Play Connect 4 online for free in your browser. Challenge the computer or a friend on the same device.">
 <meta name="twitter:title" content="Connect 4 Online - Play Free in Your Browser">
 <meta name="twitter:description" content="Play Connect 4 online for free in your browser. Challenge the computer or a friend on the same device.">
-<link rel="icon" type="image/svg+xml" href="./connect4-favicon.svg">
+<link rel="icon" type="image/svg+xml" href="../connect4-favicon.svg">
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-JLWWF1NEK7"></script>
 <script>
@@ -54,33 +54,37 @@
   /* Top bar */
   #topbar {
     padding:
-      calc(8px + var(--safe-top))
+      calc(6px + var(--safe-top))
       calc(10px + var(--safe-right))
-      10px
+      6px
       calc(10px + var(--safe-left));
     background: #061225;
     border-bottom: 2px solid #1a3a5c;
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
   }
 
   #topbar-row1,
   #topbar-row2 {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
   }
 
-  #topbar-row1 { justify-content: space-between; }
+  #topbar-row1 {
+    justify-content: flex-start;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
   #topbar-row2 {
-    justify-content: flex-end;
-    flex-wrap: wrap;
+    display: none;
   }
 
   #score {
-    font-size: clamp(20px, 6vw, 34px);
+    font-size: clamp(18px, 5.6vw, 30px);
     font-weight: 900;
     letter-spacing: 1.2px;
     line-height: 1;
@@ -95,13 +99,13 @@
   #difficulty-btn,
   #sound-btn,
   #share-btn {
-    height: var(--tap);
-    min-height: var(--tap);
-    border-radius: 11px;
+    height: 40px;
+    min-height: 40px;
+    border-radius: 10px;
     border: 2px solid;
     cursor: pointer;
     font-weight: 800;
-    padding: 0 12px;
+    padding: 0 10px;
     line-height: 1;
     white-space: nowrap;
   }
@@ -123,11 +127,13 @@
       calc(100% - 11px) calc(50% - 2px);
     background-size: 5px 5px, 5px 5px;
     background-repeat: no-repeat;
+    margin-left: auto;
+    min-width: 86px;
   }
   #sound-btn {
-    width: var(--tap);
-    min-width: var(--tap);
-    font-size: 20px;
+    width: 40px;
+    min-width: 40px;
+    font-size: 18px;
     padding: 0;
     background: #1a3a5c;
     color: #fff;
@@ -169,10 +175,10 @@
     width: 100%;
     display: flex;
     flex-direction: row;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
+    gap: 8px;
+    padding: 6px 10px;
     transition: opacity 0.25s, filter 0.25s;
   }
   .panel.dim { opacity: 0.28; filter: grayscale(60%); }
@@ -199,6 +205,263 @@
   .panel-right .turn-indicator {
     background: radial-gradient(circle at 35% 30%, #ffe878, #ffd028 50%, #c09018);
     border-color: #ffd028;
+  }
+  .cpu-avatar {
+    position: relative;
+    width: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+  .cpu-face {
+    width: clamp(64px, 14vw, 110px);
+    height: clamp(64px, 14vw, 110px);
+    border-radius: 4px;
+    border: 2px solid #35557f;
+    background:
+      linear-gradient(90deg, rgba(115, 255, 208, 0.04) 1px, transparent 1px) 0 0 / 8px 8px,
+      linear-gradient(rgba(115, 255, 208, 0.04) 1px, transparent 1px) 0 0 / 8px 8px,
+      #081224;
+    box-shadow: inset 0 0 0 1px rgba(115, 255, 208, 0.12), 0 0 10px rgba(0, 140, 255, 0.14);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    image-rendering: pixelated;
+  }
+  .cpu-face.hidden {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .cpu-chat {
+    min-height: 2.3em;
+    max-width: min(94%, 190px);
+    padding: 5px 8px;
+    border: 2px solid rgba(115, 255, 208, 0.32);
+    border-radius: 10px;
+    background: rgba(10, 28, 52, 0.94);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    color: #9bf9d6;
+    text-align: center;
+    font-size: clamp(9px, 1.7vw, 12px);
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    line-height: 1.1;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 140ms ease, border-color 140ms ease, opacity 140ms ease;
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 16px);
+    transform: translateX(-50%);
+    z-index: 2;
+  }
+  .cpu-chat::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    width: 12px;
+    height: 12px;
+    background: rgba(10, 28, 52, 0.94);
+    border-right: 2px solid rgba(115, 255, 208, 0.32);
+    border-bottom: 2px solid rgba(115, 255, 208, 0.32);
+    transform: translateX(-50%) rotate(45deg);
+  }
+  .cpu-chat.hidden {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .cpu-chat[data-tone="hype"] {
+    color: #b7ffea;
+    border-color: rgba(151, 255, 228, 0.45);
+  }
+  .cpu-chat[data-tone="taunt"] {
+    color: #ffe08f;
+    border-color: rgba(255, 224, 143, 0.4);
+  }
+  .cpu-chat[data-tone="sad"] {
+    color: #9cb6d8;
+    border-color: rgba(156, 182, 216, 0.38);
+  }
+  .cpu-chat[data-tone="hype"]::after {
+    border-right-color: rgba(151, 255, 228, 0.45);
+    border-bottom-color: rgba(151, 255, 228, 0.45);
+  }
+  .cpu-chat[data-tone="taunt"]::after {
+    border-right-color: rgba(255, 224, 143, 0.4);
+    border-bottom-color: rgba(255, 224, 143, 0.4);
+  }
+  .cpu-chat[data-tone="sad"]::after {
+    border-right-color: rgba(156, 182, 216, 0.38);
+    border-bottom-color: rgba(156, 182, 216, 0.38);
+  }
+  .cpu-brows {
+    display: flex;
+    gap: 12px;
+    margin-bottom: -3px;
+  }
+  .cpu-brow {
+    width: 12px;
+    height: 4px;
+    background: #73ffd0;
+    box-shadow: 0 0 6px rgba(115, 255, 208, 0.45);
+    transform-origin: center center;
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+  .cpu-eyes {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .cpu-eye {
+    width: 11px;
+    height: 11px;
+    background: #73ffd0;
+    box-shadow: 0 0 6px rgba(115, 255, 208, 0.55);
+    position: relative;
+    overflow: hidden;
+    transition: transform 160ms ease, opacity 160ms ease;
+  }
+  .cpu-eye::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    left: 3px;
+    top: 3px;
+    background: #0b2a22;
+    box-shadow: 0 0 4px rgba(0,0,0,0.35);
+    animation: cpu-look 2.8s infinite steps(1, end);
+  }
+  .cpu-mouth {
+    width: 28px;
+    height: 7px;
+    background: #73ffd0;
+    box-shadow: 0 0 6px rgba(115, 255, 208, 0.5);
+  }
+  .cpu-face[data-emotion="idle"] .cpu-eye {
+    animation: cpu-blink 4s infinite;
+  }
+  .cpu-face[data-emotion="thinking"] {
+    animation: cpuface-pulse 0.9s infinite ease-in-out;
+  }
+  .cpu-face[data-emotion="thinking"] .cpu-eye::after {
+    animation: cpu-think-look 0.9s infinite steps(1, end);
+  }
+  .cpu-face[data-emotion="thinking"] .cpu-brow:first-child {
+    animation: cpu-think-brow-left 0.9s infinite ease-in-out;
+  }
+  .cpu-face[data-emotion="thinking"] .cpu-brow:last-child {
+    animation: cpu-think-brow-right 0.9s infinite ease-in-out;
+  }
+  .cpu-face[data-emotion="thinking"] .cpu-mouth {
+    width: 12px;
+  }
+  .cpu-face[data-emotion="happy"] .cpu-mouth {
+    height: 7px;
+    clip-path: polygon(0 0, 100% 0, 84% 100%, 16% 100%);
+  }
+  .cpu-face[data-emotion="happy"] .cpu-brow:first-child {
+    transform: rotate(-18deg) translateY(1px);
+    animation: cpu-happy-brow 700ms infinite alternate ease-in-out;
+  }
+  .cpu-face[data-emotion="happy"] .cpu-brow:last-child {
+    transform: rotate(18deg) translateY(1px);
+    animation: cpu-happy-brow 700ms infinite alternate ease-in-out;
+  }
+  .cpu-face[data-emotion="happy"] .cpu-eye {
+    transform: scale(1.12);
+  }
+  .cpu-face[data-emotion="happy"] .cpu-eye::after {
+    animation: cpu-look 1.2s infinite steps(1, end);
+  }
+  .cpu-face[data-emotion="sad"] .cpu-mouth {
+    height: 7px;
+    clip-path: polygon(16% 0, 84% 0, 100% 100%, 0 100%);
+  }
+  .cpu-face[data-emotion="sad"] .cpu-brow:first-child {
+    transform: rotate(16deg) translateY(-1px);
+  }
+  .cpu-face[data-emotion="sad"] .cpu-brow:last-child {
+    transform: rotate(-16deg) translateY(-1px);
+  }
+  .cpu-face[data-emotion="sad"] .cpu-eye {
+    transform: scaleY(0.75);
+    opacity: 0.88;
+  }
+  .cpu-face[data-emotion="sad"] .cpu-eye::after {
+    animation: none;
+    left: 3px;
+    top: 4px;
+  }
+  .cpu-face[data-emotion="worried"] .cpu-eye {
+    width: 8px;
+    height: 4px;
+    transform: translateY(1px);
+  }
+  .cpu-face[data-emotion="worried"] .cpu-brow:first-child {
+    transform: rotate(20deg) translateY(-1px);
+  }
+  .cpu-face[data-emotion="worried"] .cpu-brow:last-child {
+    transform: rotate(-20deg) translateY(-1px);
+  }
+  .cpu-face[data-emotion="worried"] .cpu-brow {
+    animation: cpu-worried-brow 360ms infinite alternate ease-in-out;
+  }
+  .cpu-face[data-emotion="worried"] .cpu-eye::after {
+    animation: none;
+  }
+  .cpu-face[data-emotion="worried"] .cpu-mouth {
+    width: 8px;
+    height: 8px;
+    background: none;
+    border: 2px solid #73ffd0;
+    box-shadow: none;
+  }
+  @keyframes cpuface-pulse {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.06); filter: brightness(1.25); }
+  }
+  @keyframes cpu-blink {
+    0%, 46%, 50%, 100% { transform: scaleY(1); }
+    48% { transform: scaleY(0.15); }
+  }
+  @keyframes cpu-look {
+    0%, 20% { left: 1px; top: 3px; }
+    21%, 45% { left: 5px; top: 3px; }
+    46%, 70% { left: 3px; top: 1px; }
+    71%, 100% { left: 3px; top: 4px; }
+  }
+  @keyframes cpu-think-look {
+    0%, 25% { left: 1px; top: 3px; }
+    26%, 50% { left: 5px; top: 2px; }
+    51%, 75% { left: 2px; top: 5px; }
+    76%, 100% { left: 4px; top: 3px; }
+  }
+  @keyframes cpu-think-brow-left {
+    0%, 100% { transform: rotate(6deg) translate(-1px, 0); }
+    50% { transform: rotate(14deg) translate(-2px, -1px); }
+  }
+  @keyframes cpu-think-brow-right {
+    0%, 100% { transform: rotate(-6deg) translate(1px, 0); }
+    50% { transform: rotate(-14deg) translate(2px, -1px); }
+  }
+  @keyframes cpu-happy-brow {
+    0% { transform: translateY(1px) scaleX(1); }
+    100% { transform: translateY(0) scaleX(1.08); }
+  }
+  @keyframes cpu-worried-brow {
+    0% { opacity: 0.75; }
+    100% { opacity: 1; }
   }
   .panel .your-turn {
     font-size: clamp(11px, 3.1vw, 14px);
@@ -259,10 +522,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
+    padding: 6px 8px 8px;
     position: relative;
   }
-  #board-container { position: relative; }
+  #board-container { position: relative; margin: 0 auto; }
   #board {
     background: #1a4a8a;
     border: 5px solid #0a2a5a;
@@ -430,6 +693,49 @@
     justify-content: center;
     gap: 14px;
   }
+  #round-end {
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+  }
+  #round-end-card {
+    width: min(92vw, 560px);
+    border-radius: 16px;
+    border: 3px solid #5a84c4;
+    background: rgba(9, 28, 53, 0.95);
+    padding: 16px 14px;
+    box-shadow: 0 0 28px rgba(0, 120, 220, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  #round-end-text {
+    font-size: clamp(32px, 9vw, 64px);
+    font-weight: 900;
+    letter-spacing: 1.2px;
+    text-align: center;
+    line-height: 1.1;
+  }
+  #round-end-sub {
+    font-size: clamp(14px, 3.8vw, 20px);
+    font-weight: 800;
+    color: #c7dcfa;
+    line-height: 1.25;
+  }
+  #next-round-btn {
+    font-size: clamp(15px, 4vw, 24px);
+    font-weight: 900;
+    padding: 14px 12px;
+    border-radius: 14px;
+    border: 3px solid #4aff6a;
+    background: #0a2a5a;
+    color: #fff;
+    cursor: pointer;
+    min-height: 56px;
+    letter-spacing: 0.8px;
+  }
+  #next-round-btn:active { transform: scale(0.98); }
   #match-end h2 {
     font-size: clamp(32px, 9vw, 64px);
     font-weight: 900;
@@ -593,7 +899,10 @@
       min-height: 20px;
     }
 
-    #board-wrap { padding: 10px; }
+    #board-wrap {
+      padding: 10px;
+      align-items: center;
+    }
     #board {
       border-width: 6px;
       border-radius: 18px;
@@ -636,6 +945,96 @@
     }
   }
 
+  @media (max-width: 899px) {
+    .panel {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-height: clamp(108px, 24vw, 150px);
+    }
+    .panel-left {
+      padding: 6px 10px 8px;
+    }
+    .panel-right {
+      padding: 8px 10px 6px;
+    }
+
+    .cpu-avatar {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: auto;
+      z-index: 1;
+    }
+    /* CPU sits closest to board edge without overlap */
+    .panel-left .cpu-avatar {
+      order: 4;
+      margin-top: auto;
+      flex-direction: row-reverse;
+    }
+    .panel-right .cpu-avatar {
+      order: 1;
+      margin-bottom: auto;
+      flex-direction: row;
+    }
+    .panel-left .panel-label { order: 1; }
+    .panel-left .turn-indicator { order: 2; }
+    .panel-left .your-turn { order: 3; }
+    .panel-right .panel-label { order: 2; }
+    .panel-right .turn-indicator { order: 3; }
+    .panel-right .your-turn { order: 4; }
+
+    .cpu-face {
+      width: clamp(66px, 17vw, 92px);
+      height: clamp(66px, 17vw, 92px);
+    }
+
+    .cpu-chat {
+      position: relative;
+      left: auto;
+      bottom: auto;
+      transform: none;
+      z-index: 1;
+      max-width: clamp(86px, 29vw, 132px);
+      min-height: 2.1em;
+      font-size: clamp(9px, 2.2vw, 11px);
+      padding: 4px 7px;
+      line-height: 1.05;
+      letter-spacing: 0.5px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
+    }
+    .cpu-chat::after {
+      top: 50%;
+      bottom: auto;
+      left: auto;
+      width: 10px;
+      height: 10px;
+      transform: translateY(-50%) rotate(45deg);
+      background: rgba(10, 28, 52, 0.94);
+    }
+    .panel-left .cpu-chat::after {
+      left: -6px;
+      right: auto;
+      border-left: 2px solid rgba(115, 255, 208, 0.32);
+      border-bottom: 2px solid rgba(115, 255, 208, 0.32);
+      border-top: 0;
+      border-right: 0;
+    }
+    .panel-right .cpu-chat::after {
+      right: -6px;
+      left: auto;
+      border-top: 2px solid rgba(115, 255, 208, 0.32);
+      border-right: 2px solid rgba(115, 255, 208, 0.32);
+      border-left: 0;
+      border-bottom: 0;
+    }
+  }
+
   @media (max-width: 899px) and (orientation: landscape) and (max-height: 540px) {
     #topbar {
       flex-direction: row;
@@ -673,10 +1072,16 @@
   }
 
   @media (max-width: 399px) {
-    #topbar-row2 { gap: 6px; }
-    #topbar-row2 button { padding: 0 9px; }
-    #share-btn, #difficulty-btn { font-size: 12px; }
-    #score { font-size: 19px; }
+    #topbar { gap: 4px; }
+    #menu-btn, #reset-btn, #difficulty-btn, #sound-btn {
+      height: 36px;
+      min-height: 36px;
+    }
+    #menu-btn, #reset-btn { padding: 0 8px; font-size: 11px; }
+    #difficulty-btn { min-width: 74px; font-size: 12px; padding-right: 24px; }
+    #sound-btn { width: 36px; min-width: 36px; font-size: 16px; }
+    #score { font-size: 17px; }
+    #score .dash { margin: 0 4px; }
   }
 </style>
 </head>
@@ -688,20 +1093,32 @@
     <button id="menu-btn" title="Open mode menu">MENU</button>
     <button id="reset-btn" title="Reset game">RESET</button>
     <div id="score"><span class="red" id="score-red">0</span><span class="dash">—</span><span class="yel" id="score-yel">0</span></div>
-    <button id="sound-btn" title="Toggle sound">🔊</button>
-  </div>
-  <div id="topbar-row2">
-    <select id="difficulty-btn" aria-label="Computer difficulty">
-      <option value="ROOKIE">ROOKIE</option>
-      <option value="PRO" selected>PRO</option>
-      <option value="MASTER">MASTER</option>
+    <select id="difficulty-btn" aria-label="Computer difficulty" title="Computer difficulty">
+      <option value="ROOKIE">CPU: EASY</option>
+      <option value="PRO" selected>CPU: MEDIUM</option>
+      <option value="MASTER">CPU: HARD</option>
     </select>
+    <button id="sound-btn" title="Toggle sound">🔊</button>
   </div>
 </div>
 
 <!-- Main play area -->
 <div id="main">
   <div class="panel panel-left" id="panel-left">
+    <div class="cpu-avatar">
+      <div class="cpu-chat hidden" id="cpu-chat-left" data-tone="hype">CPU ONLINE</div>
+      <div class="cpu-face hidden" id="cpu-face-left" data-emotion="idle" aria-hidden="true">
+        <div class="cpu-brows">
+          <span class="cpu-brow"></span>
+          <span class="cpu-brow"></span>
+        </div>
+        <div class="cpu-eyes">
+          <span class="cpu-eye"></span>
+          <span class="cpu-eye"></span>
+        </div>
+        <div class="cpu-mouth"></div>
+      </div>
+    </div>
     <div class="panel-label" id="label-left">PLAYER 1</div>
     <div class="turn-indicator"></div>
     <div class="your-turn">YOUR TURN</div>
@@ -761,9 +1178,32 @@
         <button id="challenge-link-btn" class="hidden">CHALLENGE BY LINK</button>
       </div>
     </div>
+
+    <!-- Round end overlay -->
+    <div class="overlay hidden" id="round-end">
+      <div id="round-end-card">
+        <h2 id="round-end-text">ROUND WIN</h2>
+        <p id="round-end-sub">Score updated.</p>
+        <button id="next-round-btn">NEXT ROUND</button>
+      </div>
+    </div>
   </div>
 
   <div class="panel panel-right" id="panel-right">
+    <div class="cpu-avatar">
+      <div class="cpu-chat hidden" id="cpu-chat-right" data-tone="hype">CPU ONLINE</div>
+      <div class="cpu-face hidden" id="cpu-face-right" data-emotion="idle" aria-hidden="true">
+        <div class="cpu-brows">
+          <span class="cpu-brow"></span>
+          <span class="cpu-brow"></span>
+        </div>
+        <div class="cpu-eyes">
+          <span class="cpu-eye"></span>
+          <span class="cpu-eye"></span>
+        </div>
+        <div class="cpu-mouth"></div>
+      </div>
+    </div>
     <div class="panel-label" id="label-right">PLAYER 2</div>
     <div class="turn-indicator"></div>
     <div class="your-turn">YOUR TURN</div>
@@ -989,6 +1429,34 @@ let asyncReminderTimer = null;
 let selectedMode = 'cpu';       // cpu | pass | link
 const MODE_STORAGE_KEY = 'connect4_mode_pref_v1';
 const ENABLE_LINK_MODE = true; // async text-link mode is live
+const CPU_PERSONA_LINES = {
+  intro: ['CPU online.', 'Ready when you are.', 'Let us play.'],
+  thinking: ['Calculating your downfall...', 'Lining this up...', 'I already like this move...'],
+  cpuTurn: ['My turn. Watch closely.', 'This is going to hurt.', 'I see it. You do not.'],
+  yourTurn: ['Your move.', 'Show me.', 'What is your play?'],
+  cpuBlock: ['Nice try. Your move.', 'Not this turn.', 'Blocked. Try again.', 'Close one. Your move.'],
+  tauntHuman: [
+    'Clock is ticking.',
+    'Any day now.',
+    'Need a hint?',
+    'Still thinking?',
+    'I can wait.',
+    'Bold strategy... eventually?',
+    'Pressure is part of the game.',
+    'Your move, champion.',
+    'Do not overthink it.',
+    'I believe in you. Maybe.'
+  ],
+  cpuWin: ['Called it.', 'Point for me. Again.', 'Nice try. Not enough.'],
+  cpuLose: ['Strong move.', 'Well played.', 'You got me.'],
+  draw: ['Stalemate.', 'Even round.', 'Balanced board.']
+};
+let lastCpuLine = '';
+let cpuForcedNextHumanLine = null;
+const CPU_TAUNT_START_MS = 6500;
+const CPU_TAUNT_REPEAT_MS = 7000;
+let cpuTauntStartTimer = null;
+let cpuTauntRepeatTimer = null;
 
 function seatForPlayer(player) {
   return player === RED ? 'r' : 'y';
@@ -1093,6 +1561,7 @@ function restoreSession(modeKey) {
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
   document.getElementById('match-end').classList.add('hidden');
+  hideRoundEndOverlay();
   setControlVisibility();
   updateShareHash();
   if (asyncMode) {
@@ -1111,6 +1580,7 @@ function openModeMenuPreserve() {
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
   document.getElementById('match-end').classList.add('hidden');
+  hideRoundEndOverlay();
   document.getElementById('mode-select').classList.remove('hidden');
   const mode = currentModeKey();
   selectedMode = mode;
@@ -1126,6 +1596,30 @@ function clearAsyncReminderTimer() {
 function hideAsyncTurnOverlay() {
   clearAsyncReminderTimer();
   document.getElementById('async-turn-overlay').classList.add('hidden');
+}
+
+function hideRoundEndOverlay() {
+  const el = document.getElementById('round-end');
+  if (el) el.classList.add('hidden');
+}
+
+function showRoundEndOverlay(winner) {
+  const titleEl = document.getElementById('round-end-text');
+  const subEl = document.getElementById('round-end-sub');
+  if (!titleEl || !subEl) return;
+  hideAnnouncement();
+  if (winner === RED) {
+    titleEl.textContent = onePlayer && humanSide === RED ? 'YOU WIN!' : 'RED WINS!';
+    titleEl.style.color = '#ff3b47';
+  } else if (winner === YEL) {
+    titleEl.textContent = onePlayer && humanSide === YEL ? 'YOU WIN!' : (onePlayer ? 'COMPUTER WINS' : 'YELLOW WINS!');
+    titleEl.style.color = '#ffd028';
+  } else {
+    titleEl.textContent = "IT'S A DRAW";
+    titleEl.style.color = '#d7e7ff';
+  }
+  subEl.textContent = `ROUND COMPLETE • SCORE ${scores[RED]}-${scores[YEL]}`;
+  document.getElementById('round-end').classList.remove('hidden');
 }
 
 function showAsyncOverlayState({
@@ -1237,6 +1731,8 @@ function setControlVisibility() {
   if (resetBtnEl) resetBtnEl.style.display = asyncMode ? 'none' : '';
   if (challengeBtn) challengeBtn.classList.toggle('hidden', !(ENABLE_LINK_MODE && onePlayer && !asyncMode));
   if (!asyncMode) hideAsyncTurnOverlay();
+  setCpuFaceVisibility();
+  setCpuChatVisibility();
   requestAnimationFrame(sizeBoard);
 }
 
@@ -1248,6 +1744,105 @@ function updateCpuLabels() {
     document.getElementById('label-left').textContent = 'CPU';
     document.getElementById('label-right').textContent = 'YOU';
   }
+  setCpuFaceVisibility();
+  setCpuChatVisibility();
+}
+
+function getCpuFaceEl() {
+  return humanSide === RED
+    ? document.getElementById('cpu-face-right')
+    : document.getElementById('cpu-face-left');
+}
+
+function getCpuChatEl() {
+  return humanSide === RED
+    ? document.getElementById('cpu-chat-right')
+    : document.getElementById('cpu-chat-left');
+}
+
+function pickCpuLine(bucket) {
+  const lines = CPU_PERSONA_LINES[bucket] || CPU_PERSONA_LINES.yourTurn;
+  if (!lines.length) return '';
+  if (lines.length === 1) return lines[0];
+  let line = lines[Math.floor(Math.random() * lines.length)];
+  if (line === lastCpuLine) line = lines[(lines.indexOf(line) + 1) % lines.length];
+  lastCpuLine = line;
+  return line;
+}
+
+function setCpuChatVisibility() {
+  const leftChat = document.getElementById('cpu-chat-left');
+  const rightChat = document.getElementById('cpu-chat-right');
+  if (!leftChat || !rightChat) return;
+  leftChat.classList.add('hidden');
+  rightChat.classList.add('hidden');
+  if (!onePlayer) return;
+  const cpuChat = getCpuChatEl();
+  if (!cpuChat) return;
+  cpuChat.classList.remove('hidden');
+}
+
+function setCpuChat(text, tone = 'hype') {
+  const cpuChat = getCpuChatEl();
+  if (!cpuChat) return;
+  cpuChat.textContent = text || '';
+  cpuChat.dataset.tone = tone;
+}
+
+function cpuSay(bucket, tone = 'hype') {
+  if (!onePlayer) return;
+  setCpuChat(pickCpuLine(bucket), tone);
+}
+
+function clearCpuTauntTimers() {
+  if (cpuTauntStartTimer) {
+    clearTimeout(cpuTauntStartTimer);
+    cpuTauntStartTimer = null;
+  }
+  if (cpuTauntRepeatTimer) {
+    clearInterval(cpuTauntRepeatTimer);
+    cpuTauntRepeatTimer = null;
+  }
+}
+
+function scheduleCpuTauntsIfHumanWaiting() {
+  clearCpuTauntTimers();
+  if (!onePlayer || gameOver || busy || isCpuTurn()) return;
+  cpuTauntStartTimer = setTimeout(() => {
+    if (!onePlayer || gameOver || busy || isCpuTurn()) return;
+    setCpuFaceEmotion('happy');
+    cpuSay('tauntHuman', 'taunt');
+    cpuTauntRepeatTimer = setInterval(() => {
+      if (!onePlayer || gameOver || busy || isCpuTurn()) {
+        clearCpuTauntTimers();
+        return;
+      }
+      setCpuFaceEmotion('happy');
+      cpuSay('tauntHuman', 'taunt');
+    }, CPU_TAUNT_REPEAT_MS);
+  }, CPU_TAUNT_START_MS);
+}
+
+function setCpuFaceVisibility() {
+  const leftFace = document.getElementById('cpu-face-left');
+  const rightFace = document.getElementById('cpu-face-right');
+  if (!leftFace || !rightFace) return;
+  leftFace.classList.add('hidden');
+  rightFace.classList.add('hidden');
+  if (!onePlayer) {
+    clearCpuTauntTimers();
+    return;
+  }
+  const cpuFace = getCpuFaceEl();
+  if (!cpuFace) return;
+  cpuFace.classList.remove('hidden');
+  setCpuChatVisibility();
+}
+
+function setCpuFaceEmotion(emotion = 'idle') {
+  const cpuFace = getCpuFaceEl();
+  if (!cpuFace) return;
+  cpuFace.dataset.emotion = emotion || 'idle';
 }
 
 function applyMode(mode, persist = true) {
@@ -1582,6 +2177,21 @@ function setActivePanel() {
   // Left is always RED, Right is always YEL
   if (currentPlayer === RED) { left.classList.remove('dim'); right.classList.add('dim'); }
   else { right.classList.remove('dim'); left.classList.add('dim'); }
+  if (onePlayer && !gameOver) {
+    if (isCpuTurn()) {
+      clearCpuTauntTimers();
+      cpuSay('cpuTurn', 'taunt');
+    } else if (!busy) {
+      setCpuFaceEmotion('idle');
+      if (cpuForcedNextHumanLine) {
+        cpuSay(cpuForcedNextHumanLine.bucket, cpuForcedNextHumanLine.tone);
+        cpuForcedNextHumanLine = null;
+      } else {
+        cpuSay('yourTurn', 'hype');
+      }
+      scheduleCpuTauntsIfHumanWaiting();
+    }
+  }
 }
 
 function isCpuTurn() {
@@ -1602,6 +2212,7 @@ function handleColumnTap(col) {
 
 function doMove(col) {
   busy = true;
+  clearCpuTauntTimers();
   sfxDrop();
   const placed = dropPiece(col, currentPlayer);
   if (!placed) {
@@ -1624,8 +2235,8 @@ function doMove(col) {
       return;
     }
     currentPlayer = (currentPlayer === RED) ? YEL : RED;
-    setActivePanel();
     busy = false;
+    setActivePanel();
     if (asyncMode) {
       if (canLocalMoveInAsync()) showAsyncYourTurnPrompt();
       else showAsyncSharePrompt();
@@ -1644,20 +2255,27 @@ function scheduleCpuMove() {
   setTimeout(() => {
     const me = currentPlayer;
     const opp = me === RED ? YEL : RED;
+    const blockCol = findImmediateWin(board, opp);
     const col = aiChoose(board, me, opp);
+    if (blockCol >= 0 && col === blockCol) {
+      cpuForcedNextHumanLine = { bucket: 'cpuBlock', tone: 'taunt' };
+    } else {
+      cpuForcedNextHumanLine = null;
+    }
     showThinking(false);
     doMove(col);
   }, delay);
 }
 
 function showThinking(on) {
-  const rightLabel = document.getElementById('label-right');
-  const leftLabel = document.getElementById('label-left');
-  const cpuPanel = humanSide === RED ? document.getElementById('panel-right') : document.getElementById('panel-left');
-  const cpuLabel = humanSide === RED ? rightLabel : leftLabel;
-  // Just animate the label when thinking
-  if (on) cpuLabel.style.animation = 'pulse 1s infinite ease-in-out';
-  else cpuLabel.style.animation = '';
+  if (!onePlayer) return;
+  if (on) {
+    clearCpuTauntTimers();
+    setCpuFaceEmotion('thinking');
+    cpuSay('thinking', 'hype');
+  } else {
+    setCpuFaceEmotion('idle');
+  }
 }
 
 // ============================================================
@@ -1718,7 +2336,10 @@ function hideAnnouncement() {
 
 function endRound(winner, winCoords) {
   gameOver = true;
+  clearCpuTauntTimers();
   hideAsyncTurnOverlay();
+  hideRoundEndOverlay();
+  let roundSpeech = '';
   if (winner !== 0) {
     scores[winner]++;
     updateScore();
@@ -1736,27 +2357,24 @@ function endRound(winner, winCoords) {
     // Announcement only if match isn't ending (match-end has its own overlay)
     const willBeMatchEnd = scores[RED] >= 3 || scores[YEL] >= 3;
     if (!willBeMatchEnd) {
-      const who = roundWinnerName(winner);
-      const colorClass = winner === RED ? 'red' : 'yel';
-      let title, speech;
+      let speech;
       if (onePlayer && winner === humanSide) {
-        title = 'YOU WIN!'; speech = 'You win the round!';
+        speech = 'You win the round!';
+        setCpuFaceEmotion('sad');
+        cpuSay('cpuLose', 'sad');
       } else if (onePlayer) {
-        title = 'COMPUTER WINS'; speech = 'The computer wins the round.';
+        speech = 'The computer wins the round.';
+        setCpuFaceEmotion('happy');
+        cpuSay('cpuWin', 'taunt');
       } else {
-        title = (winner === RED ? 'RED' : 'YELLOW') + ' WINS!';
-        speech = who + ' wins the round!';
+        speech = roundWinnerName(winner) + ' wins the round!';
       }
-      setTimeout(() => {
-        showAnnouncement(title, 'ROUND ' + (scores[RED] + scores[YEL]), colorClass);
-        speak(speech);
-      }, 600);
+      roundSpeech = speech;
     }
   } else {
-    setTimeout(() => {
-      showAnnouncement("IT'S A DRAW", 'NO WINNER THIS ROUND', 'draw');
-      speak("It's a draw!");
-    }, 300);
+    if (onePlayer) setCpuFaceEmotion('worried');
+    if (onePlayer) cpuSay('draw', 'hype');
+    roundSpeech = "It's a draw!";
   }
   // Async mode is one persistent round, not first-to-3 local match flow.
   if (asyncMode) return;
@@ -1764,7 +2382,10 @@ function endRound(winner, winCoords) {
   if (scores[RED] >= 3 || scores[YEL] >= 3) {
     setTimeout(showMatchEnd, 1500);
   } else {
-    setTimeout(nextRound, 1800);
+    setTimeout(() => {
+      showRoundEndOverlay(winner);
+      if (roundSpeech) speak(roundSpeech);
+    }, 900);
   }
 }
 
@@ -1792,6 +2413,9 @@ function updateScore() {
 
 function nextRound() {
   hideAnnouncement();
+  hideRoundEndOverlay();
+  clearCpuTauntTimers();
+  if (onePlayer) setCpuFaceEmotion('idle');
   resetBoardArray();
   clearBoardDOM();
   moveHistory = [];
@@ -1811,6 +2435,7 @@ function nextRound() {
 
 function showMatchEnd() {
   hideAnnouncement();
+  hideRoundEndOverlay();
   sfxMatchWin();
   const winner = scores[RED] >= 3 ? RED : YEL;
   let text, speech;
@@ -1832,6 +2457,7 @@ function newMatch() {
   scores[RED] = 0; scores[YEL] = 0;
   updateScore();
   document.getElementById('match-end').classList.add('hidden');
+  hideRoundEndOverlay();
   startingPlayer = RED;
   moveHistory = [];
   updateShareHash();
@@ -1909,6 +2535,8 @@ document.getElementById('cpu-side-yel').addEventListener('click', () => {
 
 function startGame() {
   hideAsyncTurnOverlay();
+  hideRoundEndOverlay();
+  clearCpuTauntTimers();
   document.getElementById('mode-select').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
   scores[RED] = 0; scores[YEL] = 0;
@@ -1923,6 +2551,10 @@ function startGame() {
   busy = false;
   if (asyncMode) asyncSeat = seatForPlayer(currentPlayer);
   setControlVisibility();
+  if (onePlayer) {
+    setCpuFaceEmotion('idle');
+    cpuSay('intro', 'hype');
+  }
   if (onePlayer) {
     setActivePanel();
     if (isCpuTurn()) scheduleCpuMove();
@@ -1951,9 +2583,11 @@ document.getElementById('difficulty-btn').addEventListener('change', (e) => {
 const resetBtn = document.getElementById('reset-btn');
 
 function returnToModeSelect() {
+  clearCpuTauntTimers();
   asyncMode = false;
   asyncSeat = null;
   hideAsyncTurnOverlay();
+  hideRoundEndOverlay();
   onePlayer = false;
   selectedMode = loadPreferredMode();
   if (!ENABLE_LINK_MODE && selectedMode === 'link') selectedMode = 'cpu';
@@ -1972,16 +2606,50 @@ function returnToModeSelect() {
   document.getElementById('label-right').textContent = 'PLAYER 2';
   document.getElementById('panel-left').classList.add('dim');
   document.getElementById('panel-right').classList.add('dim');
+  setCpuFaceVisibility();
+  setCpuChatVisibility();
   updateModeMenuHighlight(selectedMode);
   setControlVisibility();
 }
 
 function doReset() {
-  // Go back to mode select
-  returnToModeSelect();
+  // Reset flow by mode.
+  // CPU mode goes back to color selection.
+  if (onePlayer) {
+    clearCpuTauntTimers();
+    hideAsyncTurnOverlay();
+    hideRoundEndOverlay();
+    scores[RED] = 0; scores[YEL] = 0;
+    updateScore();
+    resetBoardArray();
+    clearBoardDOM();
+    moveHistory = [];
+    updateShareHash();
+    gameOver = false;
+    busy = false;
+    document.getElementById('match-end').classList.add('hidden');
+    document.getElementById('ready-overlay').classList.add('hidden');
+    document.getElementById('mode-select').classList.add('hidden');
+    document.getElementById('cpu-side-select').classList.remove('hidden');
+    return;
+  }
+
+  // Non-CPU modes reset in place.
+  const modeKey = currentModeKey();
+  sessionByMode[modeKey] = null;
+  if (modeKey === 'link') {
+    applyMode('link', true);
+    startGame();
+    return;
+  }
+  applyMode('pass', true);
+  startGame();
 }
 resetBtn.addEventListener('click', () => {
-  const ok = window.confirm('Reset the current game and return to mode select?');
+  const msg = onePlayer
+    ? 'Reset this game and go back to color choice?'
+    : 'Reset this game and start a fresh one in this same mode?';
+  const ok = window.confirm(msg);
   if (!ok) return;
   sfxClick();
   doReset();
@@ -1997,6 +2665,7 @@ document.getElementById('menu-btn').addEventListener('click', () => {
 });
 
 // New match button
+document.getElementById('next-round-btn').addEventListener('click', () => { sfxClick(); nextRound(); });
 document.getElementById('new-match-btn').addEventListener('click', () => { sfxClick(); newMatch(); });
 document.getElementById('mode-menu-btn').addEventListener('click', () => { sfxClick(); returnToModeSelect(); });
 document.getElementById('challenge-link-btn').addEventListener('click', () => {
@@ -2152,6 +2821,7 @@ function applyRoundEndVisuals(winner, winCoords) {
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
   document.getElementById('match-end').classList.add('hidden');
+  hideRoundEndOverlay();
   hideAsyncTurnOverlay();
 
   if (winner !== 0 && winCoords) {
@@ -2206,6 +2876,7 @@ function loadSharedPositionIfPresent() {
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
   document.getElementById('match-end').classList.add('hidden');
+  hideRoundEndOverlay();
 
   scores[RED] = 0; scores[YEL] = 0;
   updateScore();
