@@ -691,7 +691,6 @@
     <button id="sound-btn" title="Toggle sound">🔊</button>
   </div>
   <div id="topbar-row2">
-    <button id="share-btn" title="Share turn link">SHARE MOVE</button>
     <select id="difficulty-btn" aria-label="Computer difficulty">
       <option value="ROOKIE">ROOKIE</option>
       <option value="PRO" selected>PRO</option>
@@ -1229,11 +1228,13 @@ function setControlVisibility() {
   const difficultyBtn = document.getElementById('difficulty-btn');
   const challengeBtn = document.getElementById('challenge-link-btn');
   const linkModeBtn = document.getElementById('mode-link');
+  const resetBtnEl = document.getElementById('reset-btn');
   const modeBtnsWrap = document.querySelector('#mode-select .mode-btns');
   if (linkModeBtn) linkModeBtn.style.display = ENABLE_LINK_MODE ? '' : 'none';
   if (modeBtnsWrap) modeBtnsWrap.classList.toggle('link-disabled', !ENABLE_LINK_MODE);
   if (shareBtn) shareBtn.style.display = asyncMode ? '' : 'none';
   if (difficultyBtn) difficultyBtn.style.display = onePlayer ? '' : 'none';
+  if (resetBtnEl) resetBtnEl.style.display = asyncMode ? 'none' : '';
   if (challengeBtn) challengeBtn.classList.toggle('hidden', !(ENABLE_LINK_MODE && onePlayer && !asyncMode));
   if (!asyncMode) hideAsyncTurnOverlay();
   requestAnimationFrame(sizeBoard);
@@ -2247,15 +2248,18 @@ function loadSharedPositionIfPresent() {
   return true;
 }
 
-document.getElementById('share-btn').addEventListener('click', async () => {
-  await shareCurrentPosition();
-  if (asyncMode && !canLocalMoveInAsync()) showAsyncWaitingPrompt();
-});
-document.getElementById('share-btn').addEventListener('touchstart', async (e) => {
-  e.preventDefault();
-  await shareCurrentPosition();
-  if (asyncMode && !canLocalMoveInAsync()) showAsyncWaitingPrompt();
-}, { passive: false });
+const topShareBtn = document.getElementById('share-btn');
+if (topShareBtn) {
+  topShareBtn.addEventListener('click', async () => {
+    await shareCurrentPosition();
+    if (asyncMode && !canLocalMoveInAsync()) showAsyncWaitingPrompt();
+  });
+  topShareBtn.addEventListener('touchstart', async (e) => {
+    e.preventDefault();
+    await shareCurrentPosition();
+    if (asyncMode && !canLocalMoveInAsync()) showAsyncWaitingPrompt();
+  }, { passive: false });
+}
 
 document.getElementById('async-share-btn').addEventListener('click', async () => {
   sfxClick();
