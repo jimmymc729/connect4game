@@ -624,6 +624,50 @@
     width: min(94vw, 520px);
   }
   #mode-select .mode-btns.link-disabled { grid-template-columns: 1fr; }
+  #active-challenges {
+    width: min(94vw, 520px);
+    margin-top: 2px;
+    border: 2px solid rgba(92, 140, 211, 0.42);
+    border-radius: 14px;
+    background: rgba(10, 28, 58, 0.72);
+    padding: 10px;
+  }
+  #active-challenges.hidden { display: none; }
+  #active-challenges h3 {
+    font-size: clamp(13px, 3.5vw, 16px);
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+    color: #a8c6f0;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  #active-challenge-list {
+    display: grid;
+    gap: 7px;
+  }
+  .active-challenge-btn {
+    border: 2px solid #4e73aa;
+    border-radius: 12px;
+    background: #153768;
+    color: #fff;
+    padding: 9px 10px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .active-challenge-btn:active { transform: scale(0.985); }
+  .active-challenge-title {
+    display: block;
+    font-size: clamp(13px, 3.7vw, 16px);
+    font-weight: 900;
+    letter-spacing: 0.6px;
+  }
+  .active-challenge-sub {
+    display: block;
+    font-size: clamp(11px, 3vw, 13px);
+    opacity: 0.87;
+    margin-top: 2px;
+    letter-spacing: 0.4px;
+  }
   .mode-btn {
     font-size: clamp(18px, 5vw, 28px);
     font-weight: 900;
@@ -665,20 +709,21 @@
 
   /* Keep setup menus fully visible on mobile (not clipped by board area). */
   @media (max-width: 899px) {
-    #mode-select,
-    #cpu-side-select {
+    .overlay {
       position: fixed;
       inset: 0;
+      min-height: 100svh;
       height: 100dvh;
       z-index: 40;
       justify-content: center;
+      align-items: center;
       overflow-y: auto;
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
       padding:
         calc(14px + var(--safe-top))
         calc(12px + var(--safe-right))
-        calc(28px + var(--safe-bottom))
+        calc(96px + var(--safe-bottom))
         calc(12px + var(--safe-left));
     }
     #mode-select {
@@ -688,6 +733,10 @@
     #mode-select .mode-btns.link-disabled {
       width: min(88vw, 520px);
       margin-inline: auto;
+    }
+    #round-end-card,
+    #async-turn-card {
+      margin-bottom: 8px;
     }
   }
   #cpu-side-select h2 {
@@ -902,6 +951,16 @@
     color: #fff;
     opacity: 0.9;
   }
+
+  /* Celebration fireworks layer (visible only while win overlays are open) */
+  #celebration-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 41;
+    opacity: 0.96;
+  }
+  #celebration-canvas.hidden { display: none; }
 
   /* Tablet and desktop */
   @media (min-width: 900px) {
@@ -1182,9 +1241,13 @@
     <div class="overlay" id="mode-select">
       <h1>CONNECT 4</h1>
       <div class="mode-btns">
-        <button class="mode-btn" id="mode-cpu">SOLO VS CPU<span class="mode-sub">Fastest start</span></button>
-        <button class="mode-btn" id="mode-pass">PASS & PLAY<span class="mode-sub">Same device</span></button>
-        <button class="mode-btn" id="mode-link">CHALLENGE BY LINK<span class="mode-sub">Text your move</span></button>
+        <button class="mode-btn" id="mode-cpu">SOLO VS CPU<span class="mode-sub">Play instantly vs computer</span></button>
+        <button class="mode-btn" id="mode-pass">PASS & PLAY<span class="mode-sub">Two players, one device</span></button>
+        <button class="mode-btn" id="mode-link">CHALLENGE BY LINK<span class="mode-sub">Async turns by text link</span></button>
+      </div>
+      <div id="active-challenges" class="hidden">
+        <h3>Active Link Challenges</h3>
+        <div id="active-challenge-list"></div>
       </div>
     </div>
 
@@ -1257,6 +1320,8 @@
   </div>
 </div>
 
+<canvas id="celebration-canvas" class="hidden" aria-hidden="true"></canvas>
+
 <script>
 // ============================================================
 // SOUND SYSTEM (Web Audio — no files needed)
@@ -1301,6 +1366,60 @@ function noiseBurst(start, dur, peak=0.2, filterFreq=2000) {
   gain.gain.setValueAtTime(peak, t0);
   gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
   src.connect(filter).connect(gain).connect(ctx.destination);
+  src.start(t0);
+  src.stop(t0 + dur);
+}
+
+function envTonePan(freq, start, dur, type='sine', peak=0.25, endFreq=null, pan=0) {
+  if (!soundOn) return;
+  const ctx = getCtx();
+  const t0 = ctx.currentTime + start;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (endFreq != null) osc.frequency.exponentialRampToValueAtTime(endFreq, t0 + dur);
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(peak, t0 + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner();
+    p.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), t0);
+    osc.connect(gain).connect(p).connect(ctx.destination);
+  } else {
+    osc.connect(gain).connect(ctx.destination);
+  }
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.02);
+}
+
+function shimmerNoise(start, dur, peak=0.03, center=2600, pan=0) {
+  if (!soundOn) return;
+  const ctx = getCtx();
+  const t0 = ctx.currentTime + start;
+  const bufferSize = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const band = ctx.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = center;
+  band.Q.value = 0.8;
+  const high = ctx.createBiquadFilter();
+  high.type = 'highpass';
+  high.frequency.value = 950;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(peak, t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner();
+    p.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), t0);
+    src.connect(band).connect(high).connect(gain).connect(p).connect(ctx.destination);
+  } else {
+    src.connect(band).connect(high).connect(gain).connect(ctx.destination);
+  }
   src.start(t0);
   src.stop(t0 + dur);
 }
@@ -1353,6 +1472,17 @@ function sfxClick() {
 // CPU thinking hum (single soft ping)
 function sfxCpuThink() {
   envTone(440, 0, 0.08, 'sine', 0.08);
+}
+
+// Celebration firework burst (classic pop + crackle)
+function sfxFireworkBurst(_winner, start = 0, intensity = 1) {
+  const level = Math.max(0.45, Math.min(1.2, intensity));
+  const burstBase = 170 + Math.random() * 120;
+  // Low "thump" + bright pop
+  envTone(burstBase, start + 0.00, 0.11, 'triangle', 0.11 * level, burstBase * 0.65);
+  envTone(900 + Math.random() * 500, start + 0.01, 0.06, 'square', 0.035 * level);
+  // Short crackle tail
+  noiseBurst(start + 0.015, 0.12 + Math.random() * 0.09, 0.028 * level, 2100 + Math.random() * 2200);
 }
 
 // ============================================================
@@ -1467,14 +1597,18 @@ let busy = false;               // piece animating or AI thinking
 let onePlayer = false;          // vs CPU?
 let humanSide = RED;            // which color the human plays in 1P mode
 let difficulty = 'PRO';         // ROOKIE / PRO / MASTER
+let lastWinCoords = null;       // last highlighted 4-in-a-row (for precise redraw on resize)
 let readyState = { 1: false, 2: false };
 let moveHistory = [];           // array of played columns, 0-6
 let asyncMode = false;          // loaded from share link
 let asyncSeat = null;           // 'r' (red), 'y' (yellow), or null (unlocked spectator)
+let asyncGameId = null;         // stable id for one async challenge thread
 const ASYNC_REMINDER_DELAY_MS = 2 * 60 * 1000; // "few minutes"
 let asyncReminderTimer = null;
 let selectedMode = 'cpu';       // cpu | pass | link
 const MODE_STORAGE_KEY = 'connect4_mode_pref_v1';
+const ACTIVE_CHALLENGES_KEY = 'connect4_active_challenges_v1';
+const MAX_ACTIVE_CHALLENGES = 8;
 const ENABLE_LINK_MODE = true; // async text-link mode is live
 const CPU_PERSONA_LINES = {
   intro: ['CPU online.', 'Ready when you are.', 'Let us play.'],
@@ -1519,6 +1653,10 @@ function turnPlayerForMoves(moves) {
   return (moves.length % 2 === 0) ? RED : YEL;
 }
 
+function createChallengeId() {
+  return 'c' + Math.random().toString(36).slice(2, 10);
+}
+
 function canLocalMoveInAsync() {
   if (!asyncMode) return true;
   const allowed = playerForSeat(asyncSeat);
@@ -1527,6 +1665,63 @@ function canLocalMoveInAsync() {
 }
 
 const sessionByMode = { cpu: null, pass: null, link: null };
+const SESSION_STORAGE_KEY = 'connect4_session_by_mode_v1';
+
+function sanitizeSessionSnapshot(raw, modeKey) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (!Array.isArray(raw.board) || raw.board.length !== ROWS) return null;
+  const safeBoard = raw.board.map((row) => {
+    if (!Array.isArray(row) || row.length !== COLS) return null;
+    const clean = row.map((v) => (v === RED || v === YEL) ? v : EMPTY);
+    return clean;
+  });
+  if (safeBoard.some((row) => !row)) return null;
+  const safeHistory = Array.isArray(raw.moveHistory)
+    ? raw.moveHistory.filter((c) => Number.isInteger(c) && c >= 0 && c < COLS).slice(0, ROWS * COLS)
+    : [];
+  return {
+    mode: modeKey,
+    board: safeBoard,
+    currentPlayer: raw.currentPlayer === YEL ? YEL : RED,
+    startingPlayer: raw.startingPlayer === YEL ? YEL : RED,
+    scores: {
+      [RED]: Number.isFinite(raw.scores?.[RED]) ? Math.max(0, Math.floor(raw.scores[RED])) : 0,
+      [YEL]: Number.isFinite(raw.scores?.[YEL]) ? Math.max(0, Math.floor(raw.scores[YEL])) : 0
+    },
+    onePlayer: !!raw.onePlayer,
+    asyncMode: !!raw.asyncMode,
+    asyncSeat: (raw.asyncSeat === 'r' || raw.asyncSeat === 'y') ? raw.asyncSeat : null,
+    asyncGameId: (typeof raw.asyncGameId === 'string' && /^[a-z0-9]{6,20}$/i.test(raw.asyncGameId)) ? raw.asyncGameId : null,
+    humanSide: raw.humanSide === YEL ? YEL : RED,
+    difficulty: (raw.difficulty === 'ROOKIE' || raw.difficulty === 'PRO' || raw.difficulty === 'MASTER') ? raw.difficulty : 'PRO',
+    moveHistory: safeHistory
+  };
+}
+
+function persistSessions() {
+  try {
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionByMode));
+  } catch (e) {}
+}
+
+function loadPersistedSessions() {
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return;
+    for (const modeKey of ['cpu', 'pass', 'link']) {
+      const clean = sanitizeSessionSnapshot(parsed[modeKey], modeKey);
+      sessionByMode[modeKey] = clean;
+    }
+  } catch (e) {}
+}
+
+function clearSession(modeKey) {
+  if (!sessionByMode[modeKey]) return;
+  sessionByMode[modeKey] = null;
+  persistSessions();
+}
 
 function currentModeKey() {
   if (asyncMode) return 'link';
@@ -1550,10 +1745,12 @@ function snapshotCurrentSession(modeKey = currentModeKey()) {
     onePlayer,
     asyncMode,
     asyncSeat,
+    asyncGameId,
     humanSide,
     difficulty,
     moveHistory: moveHistory.slice()
   };
+  persistSessions();
 }
 
 function renderPiecesFromBoardArray() {
@@ -1579,6 +1776,8 @@ function restoreSession(modeKey) {
   onePlayer = snap.onePlayer;
   asyncMode = snap.asyncMode;
   asyncSeat = snap.asyncSeat;
+  asyncGameId = snap.asyncGameId || null;
+  if (asyncMode && !asyncGameId) asyncGameId = createChallengeId();
   humanSide = snap.humanSide;
   difficulty = snap.difficulty;
   const difficultyEl = document.getElementById('difficulty-btn');
@@ -1607,7 +1806,7 @@ function restoreSession(modeKey) {
   document.getElementById('mode-select').classList.add('hidden');
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
-  document.getElementById('match-end').classList.add('hidden');
+  hideMatchEndOverlay();
   hideRoundEndOverlay();
   setControlVisibility();
   updateShareHash();
@@ -1626,13 +1825,235 @@ function openModeMenuPreserve() {
   snapshotCurrentSession();
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
-  document.getElementById('match-end').classList.add('hidden');
+  hideMatchEndOverlay();
   hideRoundEndOverlay();
   document.getElementById('mode-select').classList.remove('hidden');
   const mode = currentModeKey();
   selectedMode = mode;
   updateModeMenuHighlight(mode);
+  renderActiveChallengesMenu();
 }
+
+function autosaveCurrentModeSession() {
+  if (gameOver || busy) return;
+  snapshotCurrentSession();
+}
+
+window.addEventListener('pagehide', autosaveCurrentModeSession);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') autosaveCurrentModeSession();
+});
+
+// ============================================================
+// Celebration fireworks (visual + audio while win overlay is open)
+// ============================================================
+const celebrationCanvas = document.getElementById('celebration-canvas');
+const celebrationCtx = celebrationCanvas ? celebrationCanvas.getContext('2d') : null;
+let celebrationRunning = false;
+let celebrationAnimFrame = 0;
+let celebrationBurstTimer = null;
+let celebrationWinner = YEL;
+let celebrationParticles = [];
+let celebrationGlitter = [];
+let celebrationLastTs = 0;
+let celebrationBurstCount = 0;
+let celebrationAudioUntil = 0;
+
+function celebrationPalette(winner) {
+  if (winner === RED) {
+    return ['#ff2f3d', '#ff4d5c', '#ff7e8b', '#ffb6be', '#ffd7dc'];
+  }
+  return ['#ffc800', '#ffd93a', '#ffe872', '#fff2a6', '#fff9cf'];
+}
+
+function resizeCelebrationCanvas() {
+  if (!celebrationCanvas || !celebrationCtx) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, window.innerWidth);
+  const h = Math.max(1, window.innerHeight);
+  celebrationCanvas.width = Math.floor(w * dpr);
+  celebrationCanvas.height = Math.floor(h * dpr);
+  celebrationCanvas.style.width = w + 'px';
+  celebrationCanvas.style.height = h + 'px';
+  celebrationCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function spawnCelebrationBurst() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const palette = celebrationPalette(celebrationWinner);
+  const safeTop = 18;
+  const y = safeTop + Math.random() * Math.min(120, h * 0.16);
+  const x = w * (0.1 + Math.random() * 0.8);
+  const count = 34 + Math.floor(Math.random() * 20);
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+    const speed = 120 + Math.random() * 240;
+    celebrationParticles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed * (0.5 + Math.random() * 0.6),
+      vy: Math.sin(angle) * speed * (0.2 + Math.random() * 0.9),
+      life: 0.9 + Math.random() * 0.8,
+      maxLife: 0.9 + Math.random() * 0.8,
+      size: 1.8 + Math.random() * 3.8,
+      glow: 10 + Math.random() * 22,
+      color: palette[Math.floor(Math.random() * palette.length)]
+    });
+  }
+  // Glitter drizzle that shimmers down from burst
+  const glitterCount = 22 + Math.floor(Math.random() * 16);
+  for (let i = 0; i < glitterCount; i++) {
+    celebrationGlitter.push({
+      x: x + (Math.random() - 0.5) * 84,
+      y: y + Math.random() * 16,
+      vx: (Math.random() - 0.5) * 22,
+      vy: 36 + Math.random() * 92,
+      life: 1.4 + Math.random() * 1.2,
+      maxLife: 1.4 + Math.random() * 1.2,
+      twinkle: Math.random() * Math.PI * 2,
+      color: palette[Math.floor(Math.random() * palette.length)]
+    });
+  }
+  // Vertical shimmer curtain near top edge for richer glow.
+  const curtainCount = 10 + Math.floor(Math.random() * 10);
+  for (let i = 0; i < curtainCount; i++) {
+    celebrationGlitter.push({
+      x: w * (0.06 + Math.random() * 0.88),
+      y: safeTop + Math.random() * 22,
+      vx: (Math.random() - 0.5) * 10,
+      vy: 44 + Math.random() * 78,
+      life: 1.8 + Math.random() * 1.6,
+      maxLife: 1.8 + Math.random() * 1.6,
+      twinkle: Math.random() * Math.PI * 2,
+      color: palette[Math.floor(Math.random() * palette.length)]
+    });
+  }
+  const burstIntensity = celebrationBurstCount === 0
+    ? 1.08
+    : (0.76 + Math.random() * 0.18);
+  if (Date.now() < celebrationAudioUntil) {
+    sfxFireworkBurst(celebrationWinner, 0, burstIntensity);
+  }
+  celebrationBurstCount++;
+}
+
+function celebrationTick(ts) {
+  if (!celebrationRunning || !celebrationCtx || !celebrationCanvas) return;
+  if (!celebrationLastTs) celebrationLastTs = ts;
+  const dt = Math.min((ts - celebrationLastTs) / 1000, 0.05);
+  celebrationLastTs = ts;
+  const ctx = celebrationCtx;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'lighter';
+
+  for (let i = celebrationParticles.length - 1; i >= 0; i--) {
+    const p = celebrationParticles[i];
+    p.vy += 280 * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0 || p.y > h + 30) {
+      celebrationParticles.splice(i, 1);
+      continue;
+    }
+    const a = Math.max(0, p.life / p.maxLife);
+    const radius = p.size * (0.7 + a);
+    const glow = p.glow * (0.45 + a * 0.9);
+    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glow);
+    g.addColorStop(0, p.color);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.globalAlpha = a * 0.62;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, glow, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = a * 0.95;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (let i = celebrationGlitter.length - 1; i >= 0; i--) {
+    const g = celebrationGlitter[i];
+    g.vy += 52 * dt;
+    g.x += g.vx * dt;
+    g.y += g.vy * dt;
+    g.life -= dt;
+    g.twinkle += dt * 12;
+    if (g.life <= 0 || g.y > h + 20) {
+      celebrationGlitter.splice(i, 1);
+      continue;
+    }
+    const baseA = Math.max(0, g.life / g.maxLife);
+    const twinkle = 0.45 + 0.55 * Math.abs(Math.sin(g.twinkle));
+    ctx.fillStyle = g.color;
+    ctx.globalAlpha = baseA * twinkle * 0.9;
+    const sz = 1.4 + twinkle * 1.8;
+    ctx.fillRect(g.x, g.y, sz, sz);
+    ctx.globalAlpha = baseA * twinkle * 0.35;
+    ctx.beginPath();
+    ctx.arc(g.x + sz * 0.5, g.y + sz * 0.5, sz * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  celebrationAnimFrame = requestAnimationFrame(celebrationTick);
+}
+
+function startCelebrationEffects(winner) {
+  if (!celebrationCanvas || !celebrationCtx) return;
+  stopCelebrationEffects();
+  celebrationWinner = winner === RED ? RED : YEL;
+  celebrationRunning = true;
+  celebrationParticles = [];
+  celebrationGlitter = [];
+  celebrationLastTs = 0;
+  celebrationBurstCount = 0;
+  celebrationAudioUntil = Date.now() + 10000;
+  celebrationCanvas.classList.remove('hidden');
+  resizeCelebrationCanvas();
+  // Front-load a few bursts so it feels immediate.
+  spawnCelebrationBurst();
+  setTimeout(() => { if (celebrationRunning) spawnCelebrationBurst(); }, 210);
+  setTimeout(() => { if (celebrationRunning) spawnCelebrationBurst(); }, 420);
+  const scheduleNextBurst = () => {
+    if (!celebrationRunning) return;
+    spawnCelebrationBurst();
+    celebrationBurstTimer = setTimeout(scheduleNextBurst, 520 + Math.random() * 540);
+  };
+  celebrationBurstTimer = setTimeout(scheduleNextBurst, 540);
+  celebrationAnimFrame = requestAnimationFrame(celebrationTick);
+}
+
+function stopCelebrationEffects() {
+  celebrationRunning = false;
+  if (celebrationBurstTimer) {
+    clearTimeout(celebrationBurstTimer);
+    celebrationBurstTimer = null;
+  }
+  if (celebrationAnimFrame) {
+    cancelAnimationFrame(celebrationAnimFrame);
+    celebrationAnimFrame = 0;
+  }
+  celebrationParticles = [];
+  celebrationGlitter = [];
+  celebrationBurstCount = 0;
+  celebrationAudioUntil = 0;
+  if (celebrationCtx) celebrationCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  if (celebrationCanvas) celebrationCanvas.classList.add('hidden');
+}
+
+window.addEventListener('resize', () => {
+  if (!celebrationRunning) return;
+  resizeCelebrationCanvas();
+});
 
 function clearAsyncReminderTimer() {
   if (!asyncReminderTimer) return;
@@ -1648,6 +2069,15 @@ function hideAsyncTurnOverlay() {
 function hideRoundEndOverlay() {
   const el = document.getElementById('round-end');
   if (el) el.classList.add('hidden');
+  const matchVisible = !document.getElementById('match-end').classList.contains('hidden');
+  if (!matchVisible) stopCelebrationEffects();
+}
+
+function hideMatchEndOverlay() {
+  const el = document.getElementById('match-end');
+  if (el) el.classList.add('hidden');
+  const roundVisible = !document.getElementById('round-end').classList.contains('hidden');
+  if (!roundVisible) stopCelebrationEffects();
 }
 
 function showRoundEndOverlay(winner) {
@@ -1667,6 +2097,7 @@ function showRoundEndOverlay(winner) {
   }
   subEl.textContent = `ROUND COMPLETE • SCORE ${scores[RED]}-${scores[YEL]}`;
   document.getElementById('round-end').classList.remove('hidden');
+  if (winner === RED || winner === YEL) startCelebrationEffects(winner);
 }
 
 function showAsyncOverlayState({
@@ -1756,6 +2187,167 @@ function loadPreferredMode() {
   return 'cpu';
 }
 
+function loadStoredChallenges() {
+  try {
+    const raw = localStorage.getItem(ACTIVE_CHALLENGES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item && typeof item.hash === 'string');
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveStoredChallenges(list) {
+  try {
+    localStorage.setItem(ACTIVE_CHALLENGES_KEY, JSON.stringify(list.slice(0, MAX_ACTIVE_CHALLENGES)));
+  } catch (e) {}
+}
+
+function analyzeChallengeHash(rawHash) {
+  if (!rawHash) return null;
+  const params = new URLSearchParams(rawHash.replace(/^#/, ''));
+  if (!(params.get('a') === '1' || params.has('m'))) return null;
+  const gameIdParam = params.get('g');
+  const gameId = (typeof gameIdParam === 'string' && /^[a-z0-9]{6,20}$/i.test(gameIdParam)) ? gameIdParam : null;
+  const moves = decodeMoves(params.get('m') || '');
+  if (!moves || moves.length === 0) return null;
+
+  const testBoard = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+  let turn = RED;
+  let winner = 0;
+  let finished = false;
+  for (const col of moves) {
+    const row = lowestEmptyRow(testBoard, col);
+    if (row < 0) return null;
+    testBoard[row][col] = turn;
+    if (checkWin(testBoard, turn)) {
+      winner = turn;
+      finished = true;
+      break;
+    }
+    if (isFull(testBoard)) {
+      finished = true;
+      break;
+    }
+    turn = turn === RED ? YEL : RED;
+  }
+
+  const seatParam = params.get('p');
+  let nextSeat = null;
+  if (!finished) {
+    nextSeat = (seatParam === 'r' || seatParam === 'y') ? seatParam : seatForPlayer(turn);
+  }
+
+  return {
+    hash: shareHashFromMoves(moves, nextSeat || seatForPlayer(turnPlayerForMoves(moves)), gameId),
+    gameId,
+    key: gameId ? `g:${gameId}` : null,
+    movesCount: moves.length,
+    nextSeat,
+    finished,
+    winner
+  };
+}
+
+function rememberActiveChallenge(rawHash) {
+  const meta = analyzeChallengeHash(rawHash);
+  if (!meta) return;
+  // Only track modern link challenges with stable game ids.
+  if (!meta.gameId) return;
+  let list = loadStoredChallenges().filter((item) => item.gameId !== meta.gameId);
+  if (!meta.finished) {
+    list.unshift({
+      gameId: meta.gameId,
+      hash: meta.hash,
+      updatedAt: Date.now(),
+      movesCount: meta.movesCount,
+      nextSeat: meta.nextSeat
+    });
+  }
+  saveStoredChallenges(list);
+}
+
+function renderActiveChallengesMenu() {
+  const wrap = document.getElementById('active-challenges');
+  const listEl = document.getElementById('active-challenge-list');
+  if (!wrap || !listEl) return;
+
+  const rawList = loadStoredChallenges();
+  const dedup = new Map();
+  rawList.forEach((item) => {
+    const meta = analyzeChallengeHash(item.hash);
+    if (!meta || meta.finished || !meta.key) return;
+    const existing = dedup.get(meta.key);
+    const updatedAt = item.updatedAt || Date.now();
+    if (!existing || updatedAt > existing.updatedAt) {
+      dedup.set(meta.key, {
+        gameId: meta.gameId,
+        hash: meta.hash,
+        updatedAt,
+        movesCount: meta.movesCount,
+        nextSeat: meta.nextSeat
+      });
+    }
+  });
+  const hydrated = Array.from(dedup.values())
+    .map((item) => {
+      const meta = analyzeChallengeHash(item.hash);
+      if (!meta || meta.finished || !meta.key) return null;
+      return {
+        gameId: meta.gameId,
+        hash: meta.hash,
+        updatedAt: item.updatedAt || Date.now(),
+        movesCount: meta.movesCount,
+        nextSeat: meta.nextSeat
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, MAX_ACTIVE_CHALLENGES);
+
+  saveStoredChallenges(hydrated);
+  listEl.innerHTML = '';
+  if (!hydrated.length) {
+    wrap.classList.add('hidden');
+    return;
+  }
+
+  const now = Date.now();
+  hydrated.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'active-challenge-btn';
+
+    const title = document.createElement('span');
+    title.className = 'active-challenge-title';
+    const turnLabel = item.nextSeat === 'r' ? 'Red to play' : (item.nextSeat === 'y' ? 'Yellow to play' : 'Your move');
+    title.textContent = `Resume challenge • ${turnLabel}`;
+
+    const sub = document.createElement('span');
+    sub.className = 'active-challenge-sub';
+    const mins = Math.max(1, Math.floor((now - item.updatedAt) / 60000));
+    sub.textContent = `${item.movesCount} moves • updated ${mins}m ago`;
+
+    btn.appendChild(title);
+    btn.appendChild(sub);
+    btn.addEventListener('click', () => {
+      sfxClick();
+      window.location.hash = item.hash;
+      const loaded = loadSharedPositionIfPresent();
+      if (!loaded) {
+        showAnnouncement('LINK ERROR', 'COULD NOT LOAD CHALLENGE', 'draw', 1600);
+        return;
+      }
+      document.getElementById('mode-select').classList.add('hidden');
+      hideAsyncTurnOverlay();
+    });
+    listEl.appendChild(btn);
+  });
+  wrap.classList.remove('hidden');
+}
+
 function updateModeMenuHighlight(mode = null) {
   const rawTarget = mode || selectedMode || loadPreferredMode();
   const target = (!ENABLE_LINK_MODE && rawTarget === 'link') ? 'cpu' : rawTarget;
@@ -1780,6 +2372,7 @@ function setControlVisibility() {
   if (!asyncMode) hideAsyncTurnOverlay();
   setCpuFaceVisibility();
   setCpuChatVisibility();
+  renderActiveChallengesMenu();
   requestAnimationFrame(sizeBoard);
 }
 
@@ -1897,17 +2490,20 @@ function applyMode(mode, persist = true) {
   if (mode === 'cpu') {
     asyncMode = false;
     asyncSeat = null;
+    asyncGameId = null;
     onePlayer = true;
     updateCpuLabels();
   } else if (mode === 'pass') {
     asyncMode = false;
     asyncSeat = null;
+    asyncGameId = null;
     onePlayer = false;
     document.getElementById('label-left').textContent = 'PLAYER 1';
     document.getElementById('label-right').textContent = 'PLAYER 2';
   } else {
     asyncMode = true;
     asyncSeat = null;
+    asyncGameId = null;
     onePlayer = false;
     document.getElementById('label-left').textContent = 'PLAYER 1';
     document.getElementById('label-right').textContent = 'PLAYER 2';
@@ -2000,10 +2596,12 @@ function sizeBoard() {
   if (h > maxH) { h = maxH; w = (h / 6) * 7; }
   boardEl.style.width = w + 'px';
   boardEl.style.height = h + 'px';
+  syncWinLineToBoard();
 }
 window.addEventListener('resize', sizeBoard);
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', sizeBoard);
+  window.visualViewport.addEventListener('scroll', syncWinLineToBoard);
 }
 
 function resetBoardArray() {
@@ -2017,7 +2615,12 @@ function resetBoardArray() {
 
 function clearBoardDOM() {
   document.querySelectorAll('.cell').forEach(c => { c.innerHTML = ''; });
-  document.getElementById('winline').innerHTML = '';
+  const svg = document.getElementById('winline');
+  if (svg) {
+    svg.innerHTML = '';
+    svg.removeAttribute('viewBox');
+  }
+  lastWinCoords = null;
 }
 
 // ============================================================
@@ -2312,6 +2915,7 @@ function doMove(col) {
     currentPlayer = (currentPlayer === RED) ? YEL : RED;
     busy = false;
     setActivePanel();
+    snapshotCurrentSession();
     if (asyncMode) {
       if (canLocalMoveInAsync()) showAsyncYourTurnPrompt();
       else showAsyncSharePrompt();
@@ -2459,24 +3063,33 @@ function endRound(winner, winCoords) {
   } else {
     setTimeout(() => {
       showRoundEndOverlay(winner);
-      if (roundSpeech) speak(roundSpeech);
+      if (roundSpeech) speak(roundSpeech, { interrupt: true });
     }, 900);
   }
 }
 
 function drawWinLine(coords) {
+  lastWinCoords = Array.isArray(coords) ? coords.map(([r, c]) => [r, c]) : null;
+  syncWinLineToBoard();
+}
+
+function syncWinLineToBoard() {
   const svg = document.getElementById('winline');
-  const bRect = boardEl.getBoundingClientRect();
-  const wrapRect = document.getElementById('board-wrap').getBoundingClientRect();
-  svg.style.left = (bRect.left - wrapRect.left) + 'px';
-  svg.style.top = (bRect.top - wrapRect.top) + 'px';
-  svg.setAttribute('width', bRect.width);
-  svg.setAttribute('height', bRect.height);
-  const cells = coords.map(([r,c]) => {
+  if (!svg || !lastWinCoords || lastWinCoords.length < 2 || !boardEl) return;
+
+  // Anchor SVG to the board itself so viewport/UI chrome changes can't offset it.
+  svg.style.left = boardEl.offsetLeft + 'px';
+  svg.style.top = boardEl.offsetTop + 'px';
+  svg.setAttribute('width', boardEl.clientWidth);
+  svg.setAttribute('height', boardEl.clientHeight);
+  svg.setAttribute('viewBox', `0 0 ${boardEl.clientWidth} ${boardEl.clientHeight}`);
+
+  const cells = lastWinCoords.map(([r,c]) => {
     const cell = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-    const rect = cell.getBoundingClientRect();
-    return { x: rect.left - bRect.left + rect.width/2, y: rect.top - bRect.top + rect.height/2 };
+    if (!cell) return null;
+    return { x: cell.offsetLeft + cell.offsetWidth / 2, y: cell.offsetTop + cell.offsetHeight / 2 };
   });
+  if (cells.some(c => !c)) return;
   const first = cells[0], last = cells[cells.length-1];
   svg.innerHTML = `<line x1="${first.x}" y1="${first.y}" x2="${last.x}" y2="${last.y}" />`;
 }
@@ -2494,6 +3107,8 @@ function nextRound() {
   resetBoardArray();
   clearBoardDOM();
   moveHistory = [];
+  if (asyncMode && !asyncGameId) asyncGameId = createChallengeId();
+  clearSession(currentModeKey());
   updateShareHash();
   gameOver = false;
   busy = false;
@@ -2524,14 +3139,15 @@ function showMatchEnd() {
   document.getElementById('match-end-text').textContent = text;
   document.getElementById('match-end-text').style.color = winner === RED ? '#ff3b47' : '#ffd028';
   document.getElementById('match-end').classList.remove('hidden');
+  startCelebrationEffects(winner);
   // Speak after the fanfare peaks so they don't clash
-  setTimeout(() => speak(speech, { rate: 0.9, pitch: 1.15 }), 900);
+  setTimeout(() => speak(speech, { rate: 0.9, pitch: 1.15, interrupt: true }), 900);
 }
 
 function newMatch() {
   scores[RED] = 0; scores[YEL] = 0;
   updateScore();
-  document.getElementById('match-end').classList.add('hidden');
+  hideMatchEndOverlay();
   hideRoundEndOverlay();
   startingPlayer = RED;
   moveHistory = [];
@@ -2620,6 +3236,7 @@ function startGame() {
   resetBoardArray();
   clearBoardDOM();
   moveHistory = [];
+  clearSession(currentModeKey());
   updateShareHash();
   currentPlayer = startingPlayer;
   gameOver = false;
@@ -2661,6 +3278,7 @@ function returnToModeSelect() {
   clearCpuTauntTimers();
   asyncMode = false;
   asyncSeat = null;
+  asyncGameId = null;
   hideAsyncTurnOverlay();
   hideRoundEndOverlay();
   onePlayer = false;
@@ -2673,7 +3291,7 @@ function returnToModeSelect() {
   moveHistory = [];
   updateShareHash();
   gameOver = false; busy = false;
-  document.getElementById('match-end').classList.add('hidden');
+  hideMatchEndOverlay();
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
   document.getElementById('mode-select').classList.remove('hidden');
@@ -2685,6 +3303,9 @@ function returnToModeSelect() {
   setCpuChatVisibility();
   updateModeMenuHighlight(selectedMode);
   setControlVisibility();
+  clearSession('cpu');
+  clearSession('pass');
+  clearSession('link');
 }
 
 function doReset() {
@@ -2699,10 +3320,12 @@ function doReset() {
     resetBoardArray();
     clearBoardDOM();
     moveHistory = [];
+    clearSession('cpu');
+    asyncGameId = null;
     updateShareHash();
     gameOver = false;
     busy = false;
-    document.getElementById('match-end').classList.add('hidden');
+    hideMatchEndOverlay();
     document.getElementById('ready-overlay').classList.add('hidden');
     document.getElementById('mode-select').classList.add('hidden');
     document.getElementById('cpu-side-select').classList.remove('hidden');
@@ -2711,7 +3334,7 @@ function doReset() {
 
   // Non-CPU modes reset in place.
   const modeKey = currentModeKey();
-  sessionByMode[modeKey] = null;
+  clearSession(modeKey);
   if (modeKey === 'link') {
     applyMode('link', true);
     startGame();
@@ -2747,7 +3370,7 @@ document.getElementById('challenge-link-btn').addEventListener('click', () => {
   if (!ENABLE_LINK_MODE) return;
   sfxClick();
   applyMode('link', true);
-  document.getElementById('match-end').classList.add('hidden');
+  hideMatchEndOverlay();
   startGame();
 });
 
@@ -2777,18 +3400,19 @@ function decodeMoves(raw) {
   return out;
 }
 
-function shareHashFromMoves(moves, seat = null) {
+function shareHashFromMoves(moves, seat = null, gameId = null) {
   const params = new URLSearchParams();
   params.set('a', '1');
   params.set('m', encodeMoves(moves));
   const targetSeat = (seat === 'r' || seat === 'y') ? seat : seatForPlayer(turnPlayerForMoves(moves));
   params.set('p', targetSeat);
+  if (typeof gameId === 'string' && /^[a-z0-9]{6,20}$/i.test(gameId)) params.set('g', gameId);
   return params.toString();
 }
 
 function buildShareLink() {
   const url = new URL(window.location.href);
-  url.hash = shareHashFromMoves(moveHistory, seatForPlayer(turnPlayerForMoves(moveHistory)));
+  url.hash = shareHashFromMoves(moveHistory, seatForPlayer(turnPlayerForMoves(moveHistory)), asyncGameId);
   return url.toString();
 }
 
@@ -2799,7 +3423,9 @@ function updateShareHash() {
     }
     return;
   }
-  history.replaceState(null, '', '#' + shareHashFromMoves(moveHistory, seatForPlayer(turnPlayerForMoves(moveHistory))));
+  const hash = shareHashFromMoves(moveHistory, seatForPlayer(turnPlayerForMoves(moveHistory)), asyncGameId);
+  history.replaceState(null, '', '#' + hash);
+  rememberActiveChallenge(hash);
 }
 
 function detectWinner() {
@@ -2895,7 +3521,7 @@ function applyRoundEndVisuals(winner, winCoords) {
   // Safety: these overlays should never stack on top of a replay banner.
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
-  document.getElementById('match-end').classList.add('hidden');
+  hideMatchEndOverlay();
   hideRoundEndOverlay();
   hideAsyncTurnOverlay();
 
@@ -2921,9 +3547,12 @@ function loadSharedPositionIfPresent() {
   const params = new URLSearchParams(rawHash);
   const hasAsync = params.get('a') === '1' || params.has('m');
   if (!hasAsync) return false;
+  const gameIdParam = params.get('g');
+  const parsedGameId = (typeof gameIdParam === 'string' && /^[a-z0-9]{6,20}$/i.test(gameIdParam)) ? gameIdParam : null;
   const seatParam = params.get('p');
   const moves = decodeMoves(params.get('m') || '');
   if (!moves) return false;
+  if (moves.length > 0) rememberActiveChallenge(rawHash);
 
   // Validate sequence first so bad links do not alter the UI state.
   const testBoard = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
@@ -2942,6 +3571,7 @@ function loadSharedPositionIfPresent() {
   }
 
   asyncMode = true;
+  asyncGameId = parsedGameId || createChallengeId();
   onePlayer = false;
   selectedMode = 'link';
   setControlVisibility();
@@ -2950,7 +3580,7 @@ function loadSharedPositionIfPresent() {
   document.getElementById('mode-select').classList.add('hidden');
   document.getElementById('ready-overlay').classList.add('hidden');
   document.getElementById('cpu-side-select').classList.add('hidden');
-  document.getElementById('match-end').classList.add('hidden');
+  hideMatchEndOverlay();
   hideRoundEndOverlay();
 
   scores[RED] = 0; scores[YEL] = 0;
@@ -3040,13 +3670,18 @@ document.getElementById('announce').addEventListener('click', hideAnnouncement);
 // ============================================================
 resetBoardArray();
 buildBoard();
+loadPersistedSessions();
 selectedMode = loadPreferredMode();
 if (!ENABLE_LINK_MODE && selectedMode === 'link') selectedMode = 'cpu';
 updateModeMenuHighlight(selectedMode);
 if (!loadSharedPositionIfPresent()) {
   setControlVisibility();
-  document.getElementById('panel-left').classList.add('dim');
-  document.getElementById('panel-right').classList.add('dim');
+  const modeToRestore = (!ENABLE_LINK_MODE && selectedMode === 'link') ? 'cpu' : selectedMode;
+  const restored = restoreSession(modeToRestore);
+  if (!restored) {
+    document.getElementById('panel-left').classList.add('dim');
+    document.getElementById('panel-right').classList.add('dim');
+  }
 }
 setTimeout(sizeBoard, 50);
 </script>
