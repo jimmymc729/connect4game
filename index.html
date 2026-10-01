@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Connect 4 Online - Play Free in Your Browser</title>
 <meta name="description" content="Play Connect 4 online for free in your browser. Challenge the computer or a friend on the same device with fast, mobile-friendly gameplay.">
+  <link rel="icon" href="../favicon.png?v=20260901" type="image/png" sizes="256x256" />
+  <link rel="shortcut icon" href="../favicon.png?v=20260901" type="image/png" />
+  <link rel="apple-touch-icon" href="../favicon.png?v=20260901" />
 <meta property="og:title" content="Connect 4 Online - Play Free in Your Browser">
 <meta property="og:description" content="Play Connect 4 online for free in your browser. Challenge the computer or a friend on the same device.">
 <meta name="twitter:title" content="Connect 4 Online - Play Free in Your Browser">
 <meta name="twitter:description" content="Play Connect 4 online for free in your browser. Challenge the computer or a friend on the same device.">
-<link rel="icon" type="image/svg+xml" href="./connect4-favicon.svg?v=2">
-<link rel="shortcut icon" href="./connect4-favicon.svg?v=2">
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-JLWWF1NEK7"></script>
 <script>
@@ -608,6 +609,26 @@
   .overlay.hidden { display: none; }
 
   #mode-select { flex-direction: column; gap: 18px; }
+  #mode-select.can-resume { padding-top: calc(68px + var(--safe-top)); }
+  #close-menu-btn {
+    position: absolute;
+    top: calc(14px + var(--safe-top));
+    right: calc(14px + var(--safe-right));
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 2px solid #9ec3ff;
+    border-radius: 12px;
+    background: #0a2a5a;
+    color: #fff;
+    font-size: 32px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #close-menu-btn[hidden] { display: none; }
+  #close-menu-btn:hover { background: #184679; }
+  #close-menu-btn:focus-visible { outline: 3px solid #ffd028; outline-offset: 4px; }
   #mode-select h1 {
     font-size: clamp(36px, 11vw, 62px);
     font-weight: 900;
@@ -1240,6 +1261,7 @@
 
     <!-- Mode select overlay -->
     <div class="overlay" id="mode-select">
+      <button id="close-menu-btn" type="button" aria-label="Close menu and return to game" title="Return to game (Esc)" hidden>&times;</button>
       <h1>CONNECT 4</h1>
       <div class="mode-btns">
         <button class="mode-btn" id="mode-cpu">SOLO VS CPU<span class="mode-sub">Play instantly vs computer</span></button>
@@ -1818,9 +1840,32 @@ function restoreSession(modeKey) {
   return true;
 }
 
+let menuReturnState = null;
+
+function closeModeMenu() {
+  const menu = document.getElementById('mode-select');
+  if (menu.classList.contains('hidden') || !menuReturnState) return;
+  menu.classList.add('hidden');
+  menu.classList.remove('can-resume');
+  document.getElementById('close-menu-btn').hidden = true;
+  for (const id of menuReturnState.overlays) {
+    document.getElementById(id).classList.remove('hidden');
+  }
+  if (menuReturnState.celebrating) startCelebrationEffects(menuReturnState.winner);
+  menuReturnState = null;
+  sfxClick();
+  document.getElementById('menu-btn').focus();
+}
+
 function openModeMenuPreserve() {
   const modeVisible = !document.getElementById('mode-select').classList.contains('hidden');
   if (modeVisible) return;
+  menuReturnState = {
+    overlays: ['ready-overlay', 'cpu-side-select', 'match-end', 'round-end', 'async-turn-overlay']
+      .filter(id => !document.getElementById(id).classList.contains('hidden')),
+    celebrating: celebrationRunning,
+    winner: celebrationWinner
+  };
   hideAnnouncement();
   hideAsyncTurnOverlay();
   snapshotCurrentSession();
@@ -1829,6 +1874,9 @@ function openModeMenuPreserve() {
   hideMatchEndOverlay();
   hideRoundEndOverlay();
   document.getElementById('mode-select').classList.remove('hidden');
+  document.getElementById('mode-select').classList.add('can-resume');
+  document.getElementById('close-menu-btn').hidden = false;
+  document.getElementById('close-menu-btn').focus();
   const mode = currentModeKey();
   selectedMode = mode;
   updateModeMenuHighlight(mode);
@@ -3276,6 +3324,9 @@ document.getElementById('difficulty-btn').addEventListener('change', (e) => {
 const resetBtn = document.getElementById('reset-btn');
 
 function returnToModeSelect() {
+  menuReturnState = null;
+  document.getElementById('close-menu-btn').hidden = true;
+  document.getElementById('mode-select').classList.remove('can-resume');
   clearCpuTauntTimers();
   asyncMode = false;
   asyncSeat = null;
@@ -3352,6 +3403,10 @@ resetBtn.addEventListener('click', () => {
   if (!ok) return;
   sfxClick();
   doReset();
+});
+document.getElementById('close-menu-btn').addEventListener('click', closeModeMenu);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeModeMenu();
 });
 document.getElementById('menu-btn').addEventListener('click', () => {
   const modeSelectVisible = !document.getElementById('mode-select').classList.contains('hidden');
@@ -3669,6 +3724,11 @@ document.getElementById('announce').addEventListener('click', hideAnnouncement);
 // ============================================================
 // Init
 // ============================================================
+window.render_game_to_text = () => JSON.stringify({
+  mode: currentModeKey(), board, currentPlayer, scores, busy, gameOver,
+  coordinates: 'Rows top to bottom, columns left to right; 0 empty, 1 red, 2 yellow.',
+  visibleOverlays: Array.from(document.querySelectorAll('.overlay:not(.hidden)'), el => el.id)
+});
 resetBoardArray();
 buildBoard();
 loadPersistedSessions();
